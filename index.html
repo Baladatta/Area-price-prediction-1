@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Price Predictor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #444;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            text-align: left;
+            color: #333;
+        }
+
+        input[type="number"], select {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        input[type="number"]:focus, select:focus {
+            border: 1px solid #66a6ff;
+            outline: none;
+        }
+
+        input[type="submit"] {
+            padding: 12px;
+            background: #66a6ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+        }
+
+        input[type="submit"]:hover {
+            background: #5593e6;
+        }
+
+        input[type="submit"]:active {
+            transform: scale(0.98);
+        }
+
+        h2 {
+            margin-top: 20px;
+            color: #222;
+        }
+
+        @media (max-width: 500px) {
+            .container {
+                width: 95%;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>House Price Predictor</h1>
+        <form method="POST" action="/predict">
+            <label for="area">Area (sq ft)</label>
+            <input type="number" name="area" id="area" step="0.01" placeholder="e.g., 1200" required>
+
+            <label for="bedrooms">Bedrooms</label>
+            <input type="number" name="bedrooms" id="bedrooms" min="0" placeholder="e.g., 3">
+
+            <label for="bathrooms">Bathrooms</label>
+            <input type="number" name="bathrooms" id="bathrooms" min="0" placeholder="e.g., 2">
+
+            <label for="location">Location</label>
+            <select name="location" id="location">
+                {% for loc in locations %}
+                    <option value="{{ loc }}">{{ loc }}</option>
+                {% endfor %}
+            </select>
+
+            <input type="submit" value="Predict Price">
+        </form>
+        {% if prediction_text %}
+            <h2>{{ prediction_text }}</h2>
+        {% endif %}
+    </div>
+</body>
+</html>
