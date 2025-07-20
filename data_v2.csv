@@ -1,0 +1,17 @@
+area,bedrooms,bathrooms,location,price
+600,1,1,Vizag,1200000
+800,2,1,Vizag,1600000
+950,2,2,Vizag,1900000
+1000,2,2,Hyderabad,3000000
+1200,3,2,Hyderabad,3600000
+1400,3,3,Hyderabad,4200000
+900,2,1,Bengaluru,3200000
+1500,3,2,Bengaluru,6500000
+2000,4,3,Bengaluru,9000000
+750,1,1,Chennai,1800000
+1100,2,2,Chennai,3100000
+1800,3,3,Chennai,7200000
+550,1,1,Mumbai,2500000
+950,1,1,Mumbai,4200000
+1600,3,2,Mumbai,11000000
+2200,4,4,Mumbai,18000000
