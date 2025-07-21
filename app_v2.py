@@ -12,19 +12,22 @@ Place this file in the SAME FOLDER as:
     requirements.txt
     Procfile
 
-Then deploy (Render start command: gunicorn app_v2:app).
+Render start command: gunicorn app_v2:app
 """
 
 from flask import Flask, request, jsonify, Response
 import pickle
 import numpy as np
-import pandas as pd  # Added for DataFrame input
+import pandas as pd
 import os
+import logging
 
 # ------------------------------------------------------------------
-# Flask App
+# Flask App & Logging
 # ------------------------------------------------------------------
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+log = app.logger
 
 # ------------------------------------------------------------------
 # Model loading
@@ -47,19 +50,44 @@ def load_model():
 
 
 model, model_version = load_model()
-print(f"[INFO] Loaded model version: {model_version}")
+log.info(f"[INFO] Loaded model version: {model_version}")
 
 # ------------------------------------------------------------------
 # Allowed locations (must match what model was trained on)
 # ------------------------------------------------------------------
 LOCATIONS = ["Vizag", "Hyderabad", "Bengaluru", "Chennai", "Mumbai"]
+# build lowercase lookup
+_LOC_MAP = {loc.lower(): loc for loc in LOCATIONS}
+
+
+def normalize_location(raw: str) -> str:
+    """Return canonical location name from input (case/space tolerant)."""
+    if not isinstance(raw, str):
+        return LOCATIONS[0]
+    key = raw.strip().lower()
+    return _LOC_MAP.get(key, LOCATIONS[0])  # fallback to first allowed
+    # If you'd rather error when invalid, return None and handle upstream.
 
 
 def format_rupees(x):
     try:
-        return f"₹{int(round(x)):,}"
+        return f"₹{int(round(float(x))):,}"
     except Exception:
         return "₹N/A"
+
+
+def parse_float(v, default=0.0):
+    try:
+        return float(v)
+    except Exception:
+        return float(default)
+
+
+def parse_int(v, default=0):
+    try:
+        return int(float(v))
+    except Exception:
+        return int(default)
 
 
 # ------------------------------------------------------------------
@@ -86,15 +114,14 @@ def predict():
     Returns a simple HTML result page.
     """
     try:
-        area = float(request.form.get("area", 0))
-
+        area = parse_float(request.form.get("area", 0))
         if model_version == "v2":
-            bedrooms = int(request.form.get("bedrooms", 0))
-            bathrooms = int(request.form.get("bathrooms", 0))
-            location = request.form.get("location", LOCATIONS[0])
+            bedrooms = parse_int(request.form.get("bedrooms", 0))
+            bathrooms = parse_int(request.form.get("bathrooms", 0))
+            location = normalize_location(request.form.get("location", LOCATIONS[0]))
             X = pd.DataFrame(
                 [[area, bedrooms, bathrooms, location]],
-                columns=["area", "bedrooms", "bathrooms", "location"]
+                columns=["area", "bedrooms", "bathrooms", "location"],
             )
         else:
             X = np.array([[area]])
@@ -110,6 +137,7 @@ def predict():
         return Response(html, mimetype="text/html")
 
     except Exception as e:
+        log.exception("Error in /predict")
         html = f"""
         <html><body style="font-family:Arial;text-align:center;margin-top:50px;">
             <h2>Error: {e}</h2>
@@ -124,26 +152,22 @@ def api_predict():
     """
     JSON API
     Expected body (multi-feature model):
-    {
-      "area": 1200,
-      "bedrooms": 3,
-      "bathrooms": 2,
-      "location": "Hyderabad"
-    }
-
-    For legacy area-only model, only send "area".
+      { "area": 1200, "bedrooms": 3, "bathrooms": 2, "location": "Hyderabad" }
+    Legacy (area-only): { "area": 1200 }
     """
     data = request.get_json(force=True, silent=False)
+    log.debug(f"/api/predict received: {data}")
+
     try:
-        area = float(data["area"])
+        area = parse_float(data.get("area", 0))
 
         if model_version == "v2":
-            bedrooms = int(data.get("bedrooms", 0))
-            bathrooms = int(data.get("bathrooms", 0))
-            location = data.get("location", LOCATIONS[0])
+            bedrooms = parse_int(data.get("bedrooms", 0))
+            bathrooms = parse_int(data.get("bathrooms", 0))
+            location = normalize_location(data.get("location", LOCATIONS[0]))
             X = pd.DataFrame(
                 [[area, bedrooms, bathrooms, location]],
-                columns=["area", "bedrooms", "bathrooms", "location"]
+                columns=["area", "bedrooms", "bathrooms", "location"],
             )
         else:
             X = np.array([[area]])
@@ -157,6 +181,7 @@ def api_predict():
             }
         )
     except Exception as e:
+        log.exception("Error in /api/predict")
         return jsonify({"error": str(e)}), 400
 
 
@@ -165,6 +190,5 @@ def api_predict():
 # ------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    # Debug off by default in production; set DEBUG=1 to enable
     debug = os.environ.get("DEBUG", "0") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
