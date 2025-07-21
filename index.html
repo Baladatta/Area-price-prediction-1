@@ -69,9 +69,45 @@
     color: #c00;
     font-weight: normal;
   }
+
+  /* Loading overlay */
+  #loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    color: #fff;
+    font-size: 1.25rem;
+    text-align: center;
+    padding-top: 30vh;
+    z-index: 1000;
+  }
+  #loading-overlay span {
+    display: block;
+    margin-top: 1rem;
+    font-size: 1rem;
+    opacity: .9;
+  }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    margin: 0 auto;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 </style>
 </head>
 <body>
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <span>Waking server… this can take a few seconds.</span>
+  </div>
+
   <div class="container">
     <h1>House Price Predictor</h1>
     <form id="predict-form">
@@ -100,6 +136,16 @@
   </div>
 
 <script>
+/* Show/hide loading overlay */
+function showLoading(msg) {
+  const overlay = document.getElementById('loading-overlay');
+  overlay.style.display = 'block';
+  if (msg) overlay.querySelector('span').textContent = msg;
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
 document.getElementById('predict-form').addEventListener('submit', async function (e) {
   e.preventDefault();
 
@@ -110,7 +156,9 @@ document.getElementById('predict-form').addEventListener('submit', async functio
 
   const payload = { area, bedrooms, bathrooms, location };
   const resultDiv = document.getElementById('result');
-  resultDiv.textContent = "Predicting...";
+
+  showLoading("Predicting...");
+  resultDiv.textContent = "";
 
   try {
     const resp = await fetch('/api/predict', {
@@ -119,15 +167,22 @@ document.getElementById('predict-form').addEventListener('submit', async functio
       body: JSON.stringify(payload)
     });
     const data = await resp.json();
+    hideLoading();
     if (resp.ok) {
       resultDiv.textContent = "Estimated Price: " + data.predicted_price_formatted;
     } else {
       resultDiv.innerHTML = "<span class='error'>Error: " + (data.error || 'Unknown') + "</span>";
     }
   } catch (err) {
+    hideLoading();
     resultDiv.innerHTML = "<span class='error'>Network error: " + err + "</span>";
   }
 });
+
+/* Optional: keep-alive ping so Render stays awake while tab open */
+setInterval(() => {
+  fetch('/health').catch(() => {});
+}, 10 * 60 * 1000); // every 10 minutes
 </script>
 </body>
 </html>
