@@ -1,5 +1,5 @@
 """
-train_model_v2.py  (UPDATED: no 'squared=' arg for older sklearn)
+train_model_v2.py  (FINAL: older sklearn compatible, Excel-safe, debug prints)
 
 Train the multi-feature house price prediction model used by app_v2.py.
 
@@ -8,8 +8,8 @@ Use either:
   --data path.csv      Load existing dataset
 
 Optional:
-  --save-csv path.csv  Save generated synthetic data
-  --save-legacy        Also train & save area-only fallback model.pkl
+  --save-csv path.csv  Save generated synthetic data (UTF-8-SIG for Excel)
+  --save-legacy        Also train & save an area-only fallback model.pkl
 
 Outputs:
   model_v2.pkl         (multi-feature pipeline)
@@ -45,7 +45,7 @@ DEFAULT_LEGACY_MODEL_PATH = "model.pkl"
 
 
 # ------------------------------------------------------------------
-# Synthetic Data Generator
+# Synthetic Data Generator (simple baseline)
 # ------------------------------------------------------------------
 def generate_synthetic(n_rows: int, seed: int = 42) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
@@ -151,8 +151,14 @@ def train_legacy_area_only(df: pd.DataFrame, out_path: str = DEFAULT_LEGACY_MODE
     if "price" not in df.columns or "area" not in df.columns:
         raise ValueError("DataFrame must contain 'area' and 'price' for legacy model.")
 
-    X = df[["area"]]
-    y = df["price"]
+    # Coerce numeric to be safe
+    d = df.dropna(subset=["area", "price"]).copy()
+    d["area"] = pd.to_numeric(d["area"], errors="coerce")
+    d["price"] = pd.to_numeric(d["price"], errors="coerce")
+    d = d.dropna(subset=["area", "price"])
+
+    X = d[["area"]]
+    y = d["price"]
 
     reg = LinearRegression()
     reg.fit(X, y)
@@ -184,20 +190,24 @@ def parse_args():
 
 
 def main():
+    print(f"[INFO] Script path: {os.path.abspath(__file__)}")
     args = parse_args()
 
     # Get data
     if args.generate is not None:
         print(f"[DATA] Generating {args.generate} synthetic rows...")
         df = generate_synthetic(args.generate, seed=args.seed)
+        print(f"[DATA] Generated rows: {len(df)}")
         if args.save_csv:
-            df.to_csv(args.save_csv, index=False)
+            # Excel-friendly encoding
+            df.to_csv(args.save_csv, index=False, encoding="utf-8-sig")
             print(f"[DATA] Synthetic dataset saved to {args.save_csv}")
     elif args.data:
         if not os.path.exists(args.data):
             raise FileNotFoundError(f"CSV not found: {args.data}")
         print(f"[DATA] Loading dataset from {args.data}")
         df = pd.read_csv(args.data)
+        print(f"[DATA] Loaded rows: {len(df)}")
     else:
         raise SystemExit("You must provide --data path or --generate N.")
 
