@@ -18,6 +18,7 @@ Then deploy (Render start command: gunicorn app_v2:app).
 from flask import Flask, request, jsonify, Response
 import pickle
 import numpy as np
+import pandas as pd  # Added for DataFrame input
 import os
 
 # ------------------------------------------------------------------
@@ -91,7 +92,10 @@ def predict():
             bedrooms = int(request.form.get("bedrooms", 0))
             bathrooms = int(request.form.get("bathrooms", 0))
             location = request.form.get("location", LOCATIONS[0])
-            X = [[area, bedrooms, bathrooms, location]]
+            X = pd.DataFrame(
+                [[area, bedrooms, bathrooms, location]],
+                columns=["area", "bedrooms", "bathrooms", "location"]
+            )
         else:
             X = np.array([[area]])
 
@@ -137,7 +141,10 @@ def api_predict():
             bedrooms = int(data.get("bedrooms", 0))
             bathrooms = int(data.get("bathrooms", 0))
             location = data.get("location", LOCATIONS[0])
-            X = [[area, bedrooms, bathrooms, location]]
+            X = pd.DataFrame(
+                [[area, bedrooms, bathrooms, location]],
+                columns=["area", "bedrooms", "bathrooms", "location"]
+            )
         else:
             X = np.array([[area]])
 
